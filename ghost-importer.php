@@ -5,7 +5,7 @@ Plugin URI: http://tysonarmstrong.com
 Description: Import blog posts from a Ghost blog export file
 Author: Tyson Armstrong
 Author URI: http://work.tysonarmstrong.com
-Version: 0.1
+Version: 0.1.1
 Text Domain: ghost-importer
 */
 
@@ -89,7 +89,7 @@ class Ghost_Importer {
         if (!isset($_POST['gi_import_id'])) wp_die();
         $this->import_id = $_POST['gi_import_id'];
         $importfile = $_POST['gi_import_file'];
-        $this->ghost_url = $_POST['gi_ghost_url'];
+        $this->ghost_url = htmlspecialchars_decode($_POST['gi_ghost_url']);
         if ($_POST['gi_dryrun'] == "1") $this->dryrun = true;
         check_ajax_referer( 'gi-trigger-import','gi-trigger-import' );
         
@@ -108,8 +108,10 @@ class Ghost_Importer {
             $dryrun = (isset($_POST['ghost_dryrun']) && $_POST['ghost_dryrun'] == "on") ? true : false;
             $this->import_id = time();
             $importfile = $this->fileUpload();
+            $ghost_url = htmlspecialchars($_POST['ghost_url']);
             if ($importfile) {
-                echo '<h3 class="gi-running-import" data-gi-trigger-import="'.$this->import_id.'" data-gi-dryrun="'.$dryrun.'" data-gi-import-file="'.$importfile.'" data-gi-nonce="'.wp_create_nonce( 'gi-trigger-import' ).'" gi-ghost-url="'.$_POST['ghost_url'].'">Running import. <span class="gi-progress" style="display:none;"><span class="gi-upto">0</span> of <span class="gi-totalposts">0</span> posts imported.</span></h3><h3 class="gi-finished-import" style="display: none;color:#4BB543;">Import completed. <span class="gi-upto"></span> posts imported.</h3><h3 class="gi-errored-import">Error during import. Check the log below for information.</h3><div class="gi-progress-log"></div>';
+                echo '<h3 class="gi-running-import" data-gi-trigger-import="'.$this->import_id.'" data-gi-dryrun="'.$dryrun.'" data-gi-import-file="'.$importfile.'" data-gi-nonce="'.wp_create_nonce( 'gi-trigger-import' ).'" data-gi-ghost-url="'.$ghost_url.'">Running import. <span class="gi-progress" style="display:none;"><span class="gi-upto">0</span> of <span class="gi-totalposts">0</span> posts imported.</span></h3><h3 class="gi-finished-import" style="display: none;color:#4BB543;">Import completed. <span class="gi-upto"></span> posts imported.</h3><h3 class="gi-errored-import" style="display:none;">Error during import. Check the log below for information.</h3><div class="gi-progress-log"></div>';
+                echo '<style>.gi-log-entry.error-msg{color:red}</style>';
                 wp_register_script('ghost_importer', plugin_dir_url(__FILE__) . 'ghost-importer.js', array('jquery'), '1.0', true);
                 wp_enqueue_script('ghost_importer');
             }
@@ -209,7 +211,6 @@ class Ghost_Importer {
                 if (!$this->dryrun) update_option('timezone_string',$setting->value);
                 break;
         }
-        //die('after settings');
     }
 
     private function importPost($post) {
@@ -271,7 +272,10 @@ class Ghost_Importer {
                 set_time_limit(30);
                 // Copy image from server
                 $wp_upload_dir = wp_upload_dir(); 
-                if (!$this->copyImageFromServer($match)) continue;
+                if (!$this->copyImageFromServer($match)) {
+                    $this->log("Couldn't copy image from: ".$this->ghost_url.$match,1,0);
+                    continue;
+                }
 
                 // Prepare and insert attachment 
                 $filename = $wp_upload_dir['path'].'/'.basename($match);
@@ -304,7 +308,7 @@ class Ghost_Importer {
     }
 
     private function error($msg) {
-        $this->log($msg,1);
+        $this->log($msg,1,1);
         die($msg);
     }
 

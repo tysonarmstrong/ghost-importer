@@ -5,6 +5,7 @@ jQuery(document).ready(function($) {
         var nonce = $('[data-gi-nonce]').data('gi-nonce');
         var dryrun = $('[data-gi-dryrun]').data('gi-dryrun');
         var ghost_url = $('[data-gi-ghost-url]').data('gi-ghost-url');
+        console.log(ghost_url);
 
         // Trigger the initial import
         var postdata = {'action':'ghost_importer_trigger','gi_import_id':import_id,'gi_import_file':import_file,'gi-trigger-import':nonce,'gi_dryrun':dryrun, 'gi_ghost_url':ghost_url };
@@ -21,7 +22,7 @@ jQuery(document).ready(function($) {
                 var errored = false;
                 $.each(data, function(i,e) {
                     if (e.is_error == "1") {
-                        $('.gi-progress-log').prepend('<div class="gi-log-entry error">'+e.text+'</div>');
+                        $('.gi-progress-log').prepend('<div class="gi-log-entry error-msg">'+e.text+'</div>');
                         errored = true;
                     } else {
                         $('.gi-progress-log').prepend('<div class="gi-log-entry">'+e.text+'</div>');
@@ -33,17 +34,16 @@ jQuery(document).ready(function($) {
                     }
                     $('.gi-progress').data('last-log-id',e.id);
                 });
-                if (!finished && !errored) {
+                if (!finished) {
                     setTimeout(pollLog,1000);
-                } elseif (errored) {
+                } else if (finished && errored) {
                     $('.gi-running-import').hide();
                     $('.gi-errored-import').show();
-                } elseif (finished) {
+                } else if (finished) {
                     $('.gi-running-import').hide();
                     $('.gi-finished-import').show();
                 }
             }, 'json');
         }
-        // Unhide progress
     } 
 });
